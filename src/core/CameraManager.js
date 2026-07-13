@@ -2,15 +2,40 @@ import * as THREE from 'three';
 import { CONFIG } from '../utils/Constants.js';
 
 /**
- * Wraps THREE.PerspectiveCamera, plus a trauma-based shake effect
- * (Phase 3). Trauma is a 0-1 value that decays over time; shake()
- * adds to it (clamped at 1), and update() consumes it every frame to
- * offset the camera away from its base position/look-at using noise
- * proportional to trauma^2 (so small trauma barely shakes, but it
- * ramps up fast as trauma approaches 1). The base position/look-at
- * are stored separately and never mutated, so shake always recovers
- * to exactly where the camera started.
+ * The camera's position/lookAt (see Constants.js) frames the bird
+ * left-of-center so there's room ahead to see incoming pipes. That
+ * framing was tuned against a landscape aspect ratio - three.js's
+ * PerspectiveCamera fov is *vertical*, so on a narrower (portrait/
+ * mobile) aspect the horizontal FOV shrinks along with it, which can
+ * push the off-center bird outside the frustum entirely (the "bird
+ * can't be seen" bug this fixes).
+ *
+ * Two tempting fixes turn out to be worse than the problem: growing
+ * the vertical FOV to compensate needs 120+ degrees on a typical
+ * phone aspect (a fisheye look), and dollying the camera back to
+ * compensate asymptotically fails - past a certain point moving the
+ * camera further away no longer shrinks the bird's angular offset
+ * from the view axis, so it still clips off narrow enough screens.
+ *
+ * Instead, lookXForAspect eases the look-at target's x back toward
+ * the bird's lane as the aspect narrows: full look-ahead (room to see
+ * incoming pipes) on landscape/tablet, gradually recentering on the
+ * bird as the screen gets taller, fully centered by the time it's as
+ * narrow as a typical phone. No FOV or distance change, so no
+ * distortion or scale change - the camera just pans a little.
  */
+const LANDSCAPE_ASPECT = 16 / 9; // at or above this, use the full look-ahead framing
+const PORTRAIT_ASPECT = 0.45; // at or below this, look-at is fully centered on the bird's lane
+
+function lookXForAspect(aspect) {
+  const fullLookX = CONFIG.cameraLookAt.x;
+  if (aspect >= LANDSCAPE_ASPECT) return fullLookX;
+  if (aspect <= PORTRAIT_ASPECT) return 0;
+
+  const t = (aspect - PORTRAIT_ASPECT) / (LANDSCAPE_ASPECT - PORTRAIT_ASPECT);
+  return fullLookX * t;
+}
+
 export class CameraManager {
   constructor(aspect) {
     this.camera = new THREE.PerspectiveCamera(
@@ -25,6 +50,9 @@ export class CameraManager {
       CONFIG.cameraPosition.y,
       CONFIG.cameraPosition.z
     );
+    // y/z of the look-at target never change with aspect - only x eases
+    // in via _applyAspect(), so start from the config value and let that
+    // call set the real x for the initial aspect.
     this._baseLookAt = new THREE.Vector3(
       CONFIG.cameraLookAt.x,
       CONFIG.cameraLookAt.y,
@@ -34,8 +62,7 @@ export class CameraManager {
     this.trauma = 0;
     this._shakeTime = 0;
 
-    this.camera.position.copy(this._basePosition);
-    this.camera.lookAt(this._baseLookAt);
+    this._applyAspect(aspect);
   }
 
   /** Adds trauma (clamped to 1). Call this on impactful events like death. */
@@ -77,7 +104,16 @@ export class CameraManager {
   }
 
   onResize(aspect) {
+    this._applyAspect(aspect);
+  }
+
+  /** Eases the look-at target's x for this aspect and re-applies position/lookAt to the camera. */
+  _applyAspect(aspect) {
+    this._baseLookAt.x = lookXForAspect(aspect);
+
     this.camera.aspect = aspect;
     this.camera.updateProjectionMatrix();
+    this.camera.position.copy(this._basePosition);
+    this.camera.lookAt(this._baseLookAt);
   }
 }
