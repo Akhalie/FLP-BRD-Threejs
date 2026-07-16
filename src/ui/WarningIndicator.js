@@ -74,9 +74,10 @@ export class WarningIndicator {
     scene.add(this.mesh);
   }
 
-  /** Shows the indicator at world x, slightly oversized (a quick pop-in read). */
-  show(x) {
+  /** Shows the indicator at world (x, y), slightly oversized (a quick pop-in read). y defaults to its current height if omitted. */
+  show(x, y = this.mesh.position.y) {
     this.mesh.position.x = x;
+    this.mesh.position.y = y;
     this.mesh.material.opacity = 1;
     this.mesh.scale.set(1.05, 1.05, 1);
   }

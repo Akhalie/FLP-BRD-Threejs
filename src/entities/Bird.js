@@ -91,6 +91,7 @@ export class Bird {
         this.externalGravity
     ) * delta;
     this.velocity = Math.max(this.velocity, CONFIG.maxFallSpeed);
+    this.velocity = Math.min(this.velocity, CONFIG.maxRiseSpeed);
     this.group.position.y += this.velocity * delta;
 
     this._updateTilt();

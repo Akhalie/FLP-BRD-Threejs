@@ -44,7 +44,7 @@ test('_onCleanup removes the warning indicator from the scene', () => {
   assert.equal(context.scene.children.length, 0, 'cleanup should remove every scene object the encounter added');
 });
 
-test('checkHit only reports a hit once lightning reaches its STRIKE state, within stormLightningWidth', () => {
+test('checkHit only reports a hit once lightning reaches its STRIKE state, within stormLightningWidth of the struck lane', () => {
   const context = makeContext();
   const encounter = new StormEncounter(context);
 
@@ -55,12 +55,12 @@ test('checkHit only reports a hit once lightning reaches its STRIKE state, withi
 
   const lightning = encounter.storm.lightning;
   lightning.state = 'STRIKE';
-  lightning.strikeX = context.bird.getPosition().x;
+  lightning.strikeY = context.bird.getPosition().y;
 
-  assert.equal(encounter.checkHit(context.bird), true, 'bird standing exactly under the strike should be hit');
+  assert.equal(encounter.checkHit(context.bird), true, 'bird sitting in the struck lane should be hit');
 
-  context.bird._position.x = lightning.strikeX + 100;
-  assert.equal(encounter.checkHit(context.bird), false, 'bird far from the strike x should not be hit');
+  context.bird._position.y = lightning.strikeY + 100;
+  assert.equal(encounter.checkHit(context.bird), false, 'bird that flew to the other lane should not be hit');
 
   encounter._onCleanup();
 });

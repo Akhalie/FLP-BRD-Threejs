@@ -78,6 +78,7 @@ export class Game {
     // and docs/phase5-encounters.md for the full design.
     this.encounterManager = new EncounterManager({
       scene: this.sceneManager.scene,
+      sceneManager: this.sceneManager,
       bird: this.bird,
       cameraManager: this.cameraManager,
       audioManager: this.audioManager,

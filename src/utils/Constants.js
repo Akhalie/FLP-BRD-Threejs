@@ -33,6 +33,7 @@ export const CONFIG = {
   gravity: -22,
   flapVelocity: 7.5,
   maxFallSpeed: -14,
+  maxRiseSpeed: 10, // hard ceiling on upward velocity - safety net so no external force (e.g. an updraft) can send the bird to the top "without stopping"
 
   // --- World bounds ---
   groundY: -1.5,
@@ -199,18 +200,45 @@ export const CONFIG = {
   stormWindZoneWidth: 2.8,
   stormWindZoneSpeed: 3.5,
   stormWindInfluenceScale: 0.85,
-  stormUpdraftForce: -20,
-  stormDowndraftForce: 24,
+  stormUpdraftForce: 14, // partially offsets CONFIG.gravity so it's weaker, not reversed - bird still falls, just slower, and each flap covers more height (docs/storm.md's "Updraft" section)
+  stormDowndraftForce: -14, // adds to CONFIG.gravity so it's stronger - bird falls much faster (docs/storm.md's "Downdraft" section)
+  stormWindBeamOpacity: 0.16, // tinted column background - blue for updraft, orange for downdraft (WindSystem._createVisual)
+  stormWindChevronOpacity: 0.55,
+  stormWindChevronCount: 3, // chevrons per column, evenly spaced across [groundY, ceilingY]
+  stormWindChevronSpeed: 1.6, // world units/sec the chevrons scroll - up for updraft, down for downdraft
+  stormWindBeamMargin: 0.6, // extra column height above ceilingY / below groundY so the beam doesn't look clipped
 
   // Lightning (LightningSystem) - IDLE -> WARNING -> STRIKE, always telegraphed before it can hit
   stormLightningInterval: 3.5, // seconds spent in IDLE before the next warning begins
   stormLightningWarnTime: 1.0, // seconds the warning indicator shows before the strike lands
   stormLightningStrikeDelay: 0.8, // reserved for a future thunder-after-flash audio delay (docs/storm.md's "Audio" section)
-  stormLightningSpread: 5, // world units either side of the bird's x the strike can land
-  stormLightningWidth: 0.9, // world units of hit-test width around the strike's x
+  stormLightningHighY: 3.5, // "in the air" lane (docs/storm.md's "Lightning Strike" section) - fly low to dodge a HIGH strike
+  stormLightningLowY: -0.5, // "on the ground" lane - fly high to dodge a LOW strike
+  stormLightningWidth: 1.4, // vertical hit-test tolerance around the struck lane's y - comfortably less than half the HIGH/LOW gap, so the other lane is always a safe dodge
   stormLightningLife: 0.7, // seconds the STRIKE hit-test window stays live before returning to IDLE
   stormLightningShake: 0.65, // camera shake amount on strike
   stormLightningKnockbackVelocity: -28, // reserved for a future on-hit knockback effect
+
+  // Rain (RainSystem) - atmospheric only, never affects gameplay (docs/storm.md's "Heavy Rain" section)
+  stormRainCount: 220,
+  stormRainColor: 0xaecbe8,
+  stormRainSize: 0.045,
+  stormRainOpacity: 0.5,
+  stormRainSpreadX: 16,
+  stormRainTopY: 7,
+  stormRainDepth: -1,
+  stormRainDepthSpread: 4,
+  stormRainMinSpeed: 9,
+  stormRainMaxSpeed: 14,
+
+  // Tornado (TornadoSystem) - rare, and a reward rather than a hazard (docs/storm.md's "Tornado" section)
+  stormTornadoInterval: 9, // seconds between tornadoes - long enough that it stays a rare event, not a constant one
+  stormTornadoSpeed: 3.2,
+  stormTornadoSpinSpeed: 4.5,
+  stormTornadoSegments: 5, // stacked rings forming the funnel silhouette
+  stormTornadoBaseRadius: 0.9,
+  stormTornadoHeight: 4.5,
+  stormTornadoWidth: 1.1, // world units of hit-test width around the tornado's x that trigger the boost
 };
 
 export const INPUT_KEYS = Object.freeze({
