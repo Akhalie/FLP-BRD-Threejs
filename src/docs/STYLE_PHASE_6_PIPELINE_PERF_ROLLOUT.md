@@ -7,12 +7,18 @@
 ---
 
 ## Deliverables
-- [ ] Formalize asset folders per the Style Guide: `assets/models/`, `assets/textures/`, `assets/shaders/`, `assets/ui/`. The repo currently has `public/models/` and `public/textures/` (both placeholder — only `.gitkeep` + two pipe textures exist today); decide whether `assets/` becomes a new source-side staging area feeding into `public/`, or whether the Style Guide's naming is simply applied inside the existing `public/` folders. Document the decision in this file once made — don't let it stay implicit.
-- [ ] Apply naming convention retroactively to any assets touched in Phases 2–4: `entity_<name>_v1`, `bg_<type>_<variant>_##`, `mat_<descriptor>`.
-- [ ] LOD guidance (high/medium/low) applied to any new geometry from Phase 4's background system — the parallax layers are the most likely place LODs matter (far-layer cards can be extremely cheap).
-- [ ] Consistent pivot/orientation export convention documented for any new models added to `public/models/`.
-- [ ] Full profiling pass with `src/core/PerformanceMonitor.js` across Phases 2–5 combined (cel materials + outlines + bloom/postfx + parallax backgrounds + UI), not just phase-by-phase in isolation.
-- [ ] Confirm `CONFIG.postProcessingEnabled` toggle (Phase 3) and the `PerformanceMonitor` auto-downgrade path both work under combined load.
+- [x] Formalize asset folders per the Style Guide. **Decision:** no separate `assets/` staging area — the repo is small enough that the Style Guide's naming is applied directly inside the existing `public/textures/` folder, in a new `public/textures/bg/` subfolder for background art specifically. Vite serves `public/` as-is, so a staging→build copy step would be pure overhead here.
+- [x] Apply naming convention retroactively to real assets: real background art landed this pass (a hand-painted cyberpunk city atlas, sliced into per-element files) and was named per `bg_<type>_<variant>_##`: `bg_skyline_purple_01`, `bg_skyline_blue_01`, `bg_building_facade_01`..`11`, `bg_signs_row1_01`..`row3_01`, plus `bg_ground_road_01` / `bg_accent_chevrons_01` / `bg_accent_neontubes_01` staged in `public/textures/bg/` but not yet wired into a system (candidates for a future Ground.js re-texture pass).
+- [x] LOD guidance applied to Phase 4's background system: far/near layers stay single-quad planes; mid buildings are modular low-poly groups (base tower + rooftop/setback/fire-escape detail) but still capped by the segment-recycling pool, so no separate LOD tier was needed beyond that draw-call budget.
+- [ ] Consistent pivot/orientation export convention documented for any new models added to `public/models/` — no new models landed this pass (only textures), so this stays open for whenever `public/models/` gets its first real asset.
+- [ ] Full profiling pass with `src/core/PerformanceMonitor.js` across Phases 2–5 combined — not run yet; do this in-browser (`npm run dev`) since it needs an actual frame-timing session, not something to fake from source alone.
+- [ ] Confirm `CONFIG.postProcessingEnabled` toggle (Phase 3) and the `PerformanceMonitor` auto-downgrade path both work under combined load — same as above, needs a live run.
+
+### This pass: real background art replacing procedural placeholders
+`ParallaxBackgroundSystem.js` previously used a solid-color far layer, flat-tinted boxes for mid buildings, and a procedurally-drawn canvas texture for near billboards (explicitly flagged in its own comments as "no texture asset for this yet"). That asset now exists, sliced and named per above, and all three layers were re-textured:
+- **Far layer** — `MeshBasicMaterial` now maps the real skyline art (2 variants alternating) instead of a flat hex color.
+- **Mid layer** — modular brutalist 3D towers (stacked boxes, setbacks, water tanks, fire escapes, antenna poles, roof neon trim) with real facade art mapped only to the camera-facing front face; emissive tint removed so the painted windows/signage read cleanly.
+- **Near layer** — billboards now map real shop-sign art (JET CITY / BOOST / MIRAI etc., 3 row-variants) instead of the procedural scanline canvas; the per-frame scanline UV scroll was dropped since it doesn't make sense against non-tiling artwork, but the random flicker (dim blips) was kept.
 
 ## Style Guide's Own Checklist — Mapped to Phases
 This project's `STYLE_GUIDE.md` ends with a "Quick Checklist (First Prototype)." Use it as the final acceptance gate, cross-referenced to where each item was actually implemented:
