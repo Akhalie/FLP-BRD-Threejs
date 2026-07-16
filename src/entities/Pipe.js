@@ -58,6 +58,10 @@ const BOTTOM_ASSEMBLY_GEOMETRY = buildAssemblyGeometry(-1);
 const BODY_MATERIAL = new THREE.MeshLambertMaterial({ map: BODY_TEXTURE });
 const CAP_MATERIAL = new THREE.MeshLambertMaterial({ map: CAP_TEXTURE });
 const ASSEMBLY_MATERIALS = [BODY_MATERIAL, CAP_MATERIAL];
+const OUTLINE_MATERIAL = new THREE.MeshBasicMaterial({
+  color: 0x000000,
+  side: THREE.BackSide,
+});
 
 /**
  * A single pipe pair (top + bottom assembly), designed to be pooled
@@ -72,23 +76,51 @@ export class Pipe {
   constructor() {
     this.group = new THREE.Group();
 
-    this.topAssembly = new THREE.Mesh(TOP_ASSEMBLY_GEOMETRY, ASSEMBLY_MATERIALS);
-    this.bottomAssembly = new THREE.Mesh(BOTTOM_ASSEMBLY_GEOMETRY, ASSEMBLY_MATERIALS);
-    this.group.add(this.topAssembly, this.bottomAssembly);
+    // Main meshes
+    this.topAssembly = new THREE.Mesh(
+      TOP_ASSEMBLY_GEOMETRY,
+      ASSEMBLY_MATERIALS
+    );
 
-    // Collision boxes are computed directly from known dimensions (below)
-    // rather than via Box3.setFromObject() - this keeps hitboxes exactly
-    // body-cylinder-sized (matching pre-merge behavior, ignoring the
-    // wider cosmetic cap radius) and skips a matrix-world/traversal per
-    // pipe per frame.
+    this.bottomAssembly = new THREE.Mesh(
+      BOTTOM_ASSEMBLY_GEOMETRY,
+      ASSEMBLY_MATERIALS
+    );
+
+    // Outline meshes
+    this.topOutline = new THREE.Mesh(
+      TOP_ASSEMBLY_GEOMETRY,
+      OUTLINE_MATERIAL
+    );
+
+    this.bottomOutline = new THREE.Mesh(
+      BOTTOM_ASSEMBLY_GEOMETRY,
+      OUTLINE_MATERIAL
+    );
+
+    this.topOutline.scale.setScalar(1.06);
+    this.bottomOutline.scale.setScalar(1.06);
+
+    // Parent outlines to the real pipes so they automatically
+    // move/rotate with them.
+    this.topAssembly.add(this.topOutline);
+    this.bottomAssembly.add(this.bottomOutline);
+
+    this.group.add(this.topAssembly);
+    this.group.add(this.bottomAssembly);
+
+    // Collision
     this.topBox = new THREE.Box3();
     this.bottomBox = new THREE.Box3();
+
     this._topY = 0;
     this._bottomY = 0;
     this.gapCenterY = 0;
 
     this.active = false;
-    this.passed = false; // flips true once the bird has flown past, for scoring
+    this.passed = false;
+    this.topOutline.position.set(0, 0, 0);
+    this.bottomOutline.position.set(0, 0, 0);
   }
 
   spawn(x) {
