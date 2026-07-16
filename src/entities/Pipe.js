@@ -6,22 +6,39 @@ const PIPE_RADIUS = 0.5;
 const CAP_RADIUS = PIPE_RADIUS * 1.15;
 const CAP_HEIGHT = 0.35;
 const BODY_LENGTH = 10; // long enough to run off the top/bottom of the screen
-const PIPE_COLOR = new THREE.Color(0x4caf50);
-const CAP_COLOR = new THREE.Color(0x3d8b40);
+
+// Textured pipe skin (replaces the old flat vertex-colored look). The body
+// texture tiles vertically along the long cylinder; the cap texture tiles
+// once around the short rim piece.
+const textureLoader = new THREE.TextureLoader();
+
+function loadTiledTexture(url, repeatY) {
+  const texture = textureLoader.load(url);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, repeatY);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+const BODY_TEXTURE = loadTiledTexture('/textures/pipe_body.png', BODY_LENGTH / 3);
+const CAP_TEXTURE = loadTiledTexture('/textures/pipe_cap.png', 1);
 
 /**
- * Builds one merged, vertex-colored geometry combining the pipe body
- * + its end cap, translated so the whole assembly's local origin sits
- * exactly at the gap edge (the cap end). `direction` is +1 for the top
- * assembly (extends upward from the gap) or -1 for the bottom
- * (extends downward) - this lets Pipe.spawn() position each assembly
- * with a single `.position.set(0, gapY, 0)` instead of positioning
- * two separate meshes per side.
+ * Builds one merged geometry combining the pipe body + its end cap,
+ * translated so the whole assembly's local origin sits exactly at the
+ * gap edge (the cap end). `direction` is +1 for the top assembly
+ * (extends upward from the gap) or -1 for the bottom (extends
+ * downward) - this lets Pipe.spawn() position each assembly with a
+ * single `.position.set(0, gapY, 0)` instead of positioning two
+ * separate meshes per side.
  *
  * Built once at module load and shared by every Pipe instance (Phase
  * 4 optimization): this turns what used to be 4 meshes / 2 materials
- * per pipe into 2 meshes / 1 shared material, halving per-pipe draw
- * calls without changing how any pipe looks.
+ * per pipe into 2 meshes / 1 shared pair of materials, halving
+ * per-pipe draw calls without changing how any pipe looks. The body
+ * and cap are kept as separate geometry groups (via `useGroups`) so
+ * each can carry its own texture.
  */
 function buildAssemblyGeometry(direction) {
   const bodyGeometry = new THREE.CylinderGeometry(PIPE_RADIUS, PIPE_RADIUS, BODY_LENGTH, 8);
@@ -30,29 +47,17 @@ function buildAssemblyGeometry(direction) {
   bodyGeometry.translate(0, direction * (BODY_LENGTH / 2), 0);
   capGeometry.translate(0, direction * (CAP_HEIGHT / 2), 0);
 
-  _paintVertexColors(bodyGeometry, PIPE_COLOR);
-  _paintVertexColors(capGeometry, CAP_COLOR);
-
-  const merged = mergeGeometries([bodyGeometry, capGeometry], false);
+  const merged = mergeGeometries([bodyGeometry, capGeometry], true);
   bodyGeometry.dispose();
   capGeometry.dispose();
   return merged;
 }
 
-function _paintVertexColors(geometry, color) {
-  const count = geometry.attributes.position.count;
-  const colors = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    colors[i * 3] = color.r;
-    colors[i * 3 + 1] = color.g;
-    colors[i * 3 + 2] = color.b;
-  }
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-}
-
 const TOP_ASSEMBLY_GEOMETRY = buildAssemblyGeometry(1);
 const BOTTOM_ASSEMBLY_GEOMETRY = buildAssemblyGeometry(-1);
-const ASSEMBLY_MATERIAL = new THREE.MeshLambertMaterial({ vertexColors: true });
+const BODY_MATERIAL = new THREE.MeshLambertMaterial({ map: BODY_TEXTURE });
+const CAP_MATERIAL = new THREE.MeshLambertMaterial({ map: CAP_TEXTURE });
+const ASSEMBLY_MATERIALS = [BODY_MATERIAL, CAP_MATERIAL];
 
 /**
  * A single pipe pair (top + bottom assembly), designed to be pooled
@@ -67,8 +72,8 @@ export class Pipe {
   constructor() {
     this.group = new THREE.Group();
 
-    this.topAssembly = new THREE.Mesh(TOP_ASSEMBLY_GEOMETRY, ASSEMBLY_MATERIAL);
-    this.bottomAssembly = new THREE.Mesh(BOTTOM_ASSEMBLY_GEOMETRY, ASSEMBLY_MATERIAL);
+    this.topAssembly = new THREE.Mesh(TOP_ASSEMBLY_GEOMETRY, ASSEMBLY_MATERIALS);
+    this.bottomAssembly = new THREE.Mesh(BOTTOM_ASSEMBLY_GEOMETRY, ASSEMBLY_MATERIALS);
     this.group.add(this.topAssembly, this.bottomAssembly);
 
     // Collision boxes are computed directly from known dimensions (below)
