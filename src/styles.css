@@ -22,6 +22,7 @@
   --orange: #e8611c;              /* beak accent */
   --mist: #cfd8c8;                /* muted body text */
   --locked: #8a8f83;              /* locked-item text */
+  --danger: #ff5252;              /* encounter WARNING flash */
 
   --radius-sm: 4px;
   --radius-md: 8px;
@@ -329,6 +330,78 @@ html, body {
 @keyframes hint-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.55; }
+}
+
+/* --- Encounter WARNING flash --------------------------------------- */
+/* Hidden by default; Hud toggles .visible while EncounterManager is in
+   its WARNING phase (see EncounterManager.js / Hud.js). */
+
+.hud-warning {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(20px, 7vw, 40px);
+  letter-spacing: 2px;
+  color: var(--danger);
+  text-shadow: 3px 3px 0 #000;
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hud-warning.visible {
+  opacity: 1;
+  animation: warning-flash 0.35s steps(1) infinite;
+}
+
+@keyframes warning-flash {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.15; }
+}
+
+/* --- Encounter SURVIVE timer bar ------------------------------------ */
+/* Hidden by default; Hud toggles .visible while an encounter is ACTIVE
+   and drives --survive-fill's width every frame from timeRemaining. */
+
+.hud-survive {
+  position: absolute;
+  top: max(56px, calc(env(safe-area-inset-top) + 40px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(70vw, 320px);
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.hud-survive.visible {
+  opacity: 1;
+}
+
+.hud-survive-label {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--danger);
+  text-shadow: 2px 2px 0 #000;
+  margin-bottom: 4px;
+}
+
+.hud-survive-track {
+  height: 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.hud-survive-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--danger);
+  transition: width 0.15s linear;
 }
 
 /* ===========================

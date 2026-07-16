@@ -17,6 +17,7 @@ export class PipeSpawner {
     this.activeCoins = [];
     this.speed = CONFIG.pipeSpeed;
     this._timer = 0;
+    this._spawnPaused = false;
 
     this.pool = new ObjectPool(
       () => new Pipe(),
@@ -49,13 +50,27 @@ export class PipeSpawner {
     this.activeCoins = [];
     this.speed = CONFIG.pipeSpeed;
     this._timer = 0;
+    this._spawnPaused = false;
+  }
+
+  /** Stops new pipes/coins from spawning; existing ones keep moving/despawning as normal. Used while an encounter's WARNING/ACTIVE phase owns the screen. */
+  pauseSpawning() {
+    this._spawnPaused = true;
+  }
+
+  /** Resumes normal spawning (called once an encounter fully finishes). */
+  resumeSpawning() {
+    this._spawnPaused = false;
+    this._timer = 0; // don't instantly spawn using stale elapsed time from before the pause
   }
 
   update(delta) {
-    this._timer += delta;
-    if (this._timer >= CONFIG.pipeSpawnInterval) {
-      this._timer = 0;
-      this._spawnPipe();
+    if (!this._spawnPaused) {
+      this._timer += delta;
+      if (this._timer >= CONFIG.pipeSpawnInterval) {
+        this._timer = 0;
+        this._spawnPipe();
+      }
     }
 
     for (let i = this.active.length - 1; i >= 0; i--) {

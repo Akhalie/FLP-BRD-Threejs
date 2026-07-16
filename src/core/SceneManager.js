@@ -15,8 +15,19 @@ export class SceneManager {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(CONFIG.skyColor);
     this.scene.fog = new THREE.FogExp2(CONFIG.fogColor, CONFIG.fogDensity);
+    this._baseFogDensity = CONFIG.fogDensity;
 
     this._setupLights();
+  }
+
+  /** Thickens fog for an encounter's intro ("Fog darkens" in the WARNING sequence). Idempotent. */
+  darkenFog(factor = CONFIG.encounterFogDarkenFactor) {
+    this.scene.fog.density = this._baseFogDensity * factor;
+  }
+
+  /** Restores normal fog density ("Fog clears" in the victory sequence). */
+  restoreFog() {
+    this.scene.fog.density = this._baseFogDensity;
   }
 
   _setupLights() {

@@ -50,7 +50,10 @@ export class UIManager {
     this.shopScreen.hide();
     
     const showMenu = state === GameState.MENU;
-    const showHud = state === GameState.READY || state === GameState.PLAYING;
+    const showHud =
+      state === GameState.READY ||
+      state === GameState.PLAYING ||
+      state === GameState.ENCOUNTER;
     const showPause = state === GameState.PAUSED;
     // The HUD score/pause button stay visible under the pause overlay
     // so the score doesn't visually disappear while paused.

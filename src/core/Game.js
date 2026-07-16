@@ -12,6 +12,7 @@ import { CollisionSystem } from '../systems/CollisionSystem.js';
 import { ScoreSystem } from '../systems/ScoreSystem.js';
 import { CoinSystem } from '../systems/CoinSystem.js';
 import { ShopSystem } from '../systems/ShopSystem.js';
+import { EncounterManager } from '../systems/EncounterManager.js';
 import { AudioManager } from '../audio/AudioManager.js';
 import { ParticleSystem } from '../effects/ParticleSystem.js';
 import { PerformanceMonitor } from './PerformanceMonitor.js';
@@ -72,6 +73,19 @@ export class Game {
     this.particleSystem = new ParticleSystem(this.sceneManager.scene);
     this.performanceMonitor = new PerformanceMonitor(this.rendererManager);
 
+    // Encounters (Phase 5): temporary interruptions of normal pipe
+    // gameplay, triggered at score checkpoints. See EncounterManager.js
+    // and docs/phase5-encounters.md for the full design.
+    this.encounterManager = new EncounterManager({
+      scene: this.sceneManager.scene,
+      bird: this.bird,
+      cameraManager: this.cameraManager,
+      audioManager: this.audioManager,
+      particleSystem: this.particleSystem,
+      pipeSpawner: this.pipeSpawner,
+      emitter: this.emitter,
+    });
+
     this.clock = new THREE.Clock();
     this.state = GameState.MENU;
     this._prePauseState = GameState.PLAYING;
@@ -85,6 +99,16 @@ export class Game {
     this.emitter.on('flap', () => this._handleFlap());
     this.emitter.on('pause', () => this._handlePause());
     this.emitter.on('pointScored', () => this.audioManager.playPoint());
+
+    // Encounter transition feel (Phase 5.1): the WARNING flash gets a
+    // camera punch and darkening fog; both undo themselves once the
+    // whole encounter (outro included) finishes. Concrete encounters
+    // are free to layer their own effects on top of this.
+    this.emitter.on('encounterWarning', () => {
+      this.cameraManager.shake(CONFIG.cameraShakeTraumaOnEncounterWarning);
+      this.sceneManager.darkenFog();
+    });
+    this.emitter.on('encounterEnd', () => this.sceneManager.restoreFog());
 
     // Any raw input also doubles as the user gesture that unlocks audio.
     this.emitter.on('flap', () => this.audioManager.resume());
@@ -123,6 +147,7 @@ export class Game {
         this._startPlaying();
         break;
       case GameState.PLAYING:
+      case GameState.ENCOUNTER:
         this.bird.jump();
         this.audioManager.playFlap();
         break;
@@ -135,8 +160,8 @@ export class Game {
   }
 
   _handlePause() {
-    if (this.state === GameState.PLAYING) {
-      this._prePauseState = GameState.PLAYING;
+    if (this.state === GameState.PLAYING || this.state === GameState.ENCOUNTER) {
+      this._prePauseState = this.state;
       this.state = GameState.PAUSED;
       this.audioManager.stopMusic();
       this.emitter.emit('stateChange', this.state);
@@ -167,6 +192,8 @@ export class Game {
     this.pipeSpawner.reset();
     this.scoreSystem.reset();
     this.coinSystem.reset();
+    this.encounterManager.reset();
+    this.sceneManager.restoreFog();
     this.audioManager.stopMusic();
     this.state = GameState.MENU;
     this.emitter.emit('stateChange', this.state);
@@ -185,6 +212,8 @@ export class Game {
     this.pipeSpawner.reset();
     this.scoreSystem.reset();
     this.coinSystem.reset();
+    this.encounterManager.reset();
+    this.sceneManager.restoreFog();
     this.state = GameState.READY;
     this.emitter.emit('stateChange', this.state);
   }
@@ -239,6 +268,9 @@ export class Game {
       case GameState.PLAYING:
         this._updatePlaying(delta);
         break;
+      case GameState.ENCOUNTER:
+        this._updateEncounter(delta);
+        break;
       case GameState.GAME_OVER:
         this._updateGameOver(delta);
         break;
@@ -266,6 +298,62 @@ export class Game {
 
     if (hitPipe || hitGround || hitCeiling) {
       this._onDeath(hitGround);
+      return;
+    }
+
+    if (this.encounterManager.checkCheckpoint(this.scoreSystem.score)) {
+      this._beginEncounter();
+    }
+  }
+
+  /**
+   * PLAYING -> ENCOUNTER. Fired the instant checkCheckpoint() crosses a
+   * checkpoint (still inside the WARNING flash - see EncounterManager).
+   * New pipes stop spawning immediately; whatever's already on screen
+   * keeps moving/despawning normally so it naturally clears itself.
+   */
+  _beginEncounter() {
+    this.pipeSpawner.pauseSpawning();
+    this.state = GameState.ENCOUNTER;
+    this.emitter.emit('stateChange', this.state);
+  }
+
+  /** ENCOUNTER -> PLAYING, once EncounterManager reports it's fully done (outro included). */
+  _endEncounter() {
+    this.pipeSpawner.resumeSpawning();
+    this.state = GameState.PLAYING;
+    this.emitter.emit('stateChange', this.state);
+  }
+
+  /**
+   * Runs while GameState.ENCOUNTER owns gameplay. The bird still flies
+   * and can still die (ground/ceiling/any leftover pipe), the ground
+   * keeps scrolling, and whatever pipes/coins were already on screen
+   * keep moving until they clear - but no *new* pipes/coins spawn, and
+   * score no longer increases. EncounterManager drives the actual
+   * encounter (warning -> active -> outro) underneath all of this.
+   */
+  _updateEncounter(delta) {
+    this.bird.update(delta);
+    this.ground.update(delta, this.pipeSpawner.speed);
+    this.pipeSpawner.update(delta);
+    this._collectCoins();
+
+    this.encounterManager.update(delta);
+    this.encounterManager.render();
+
+    const hitPipe = this.collisionSystem.checkPipes(this.bird, this.pipeSpawner.active);
+    const hitGround = this.collisionSystem.checkGround(this.bird);
+    const hitCeiling = this.collisionSystem.checkCeiling(this.bird);
+    const hitEncounterHazard = this.encounterManager.checkHit(this.bird); // e.g. a dragon fireball (Phase 5.3)
+
+    if (hitPipe || hitGround || hitCeiling || hitEncounterHazard) {
+      this._onDeath(hitGround);
+      return;
+    }
+
+    if (!this.encounterManager.isActive) {
+      this._endEncounter();
     }
   }
 
@@ -307,7 +395,7 @@ export class Game {
 
   /** Auto-pauses an in-progress run when the tab/app is backgrounded (switching apps on mobile, alt-tab on desktop). */
   _onVisibilityChange() {
-    if (document.hidden && this.state === GameState.PLAYING) {
+    if (document.hidden && (this.state === GameState.PLAYING || this.state === GameState.ENCOUNTER)) {
       this._handlePause();
     }
   }

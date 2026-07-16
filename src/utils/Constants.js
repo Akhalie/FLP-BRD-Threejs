@@ -4,6 +4,7 @@ export const GameState = Object.freeze({
   MENU: 'MENU',
   READY: 'READY',
   PLAYING: 'PLAYING',
+  ENCOUNTER: 'ENCOUNTER',
   PAUSED: 'PAUSED',
   GAME_OVER: 'GAME_OVER',
 });
@@ -98,6 +99,48 @@ export const CONFIG = {
   perfGoodFps: 55, // sustained average at/above this allows an upscale
   perfAdjustCooldown: 2.0, // seconds to wait between automatic scale changes
   perfScaleStep: 0.05,
+
+  // --- Encounters (Phase 5) ---
+  // Score checkpoints that trigger an encounter. EncounterManager consumes
+  // these in order and never repeats one, so this list is also the run's
+  // scripted progression (see docs/phase5-encounters.md). Only 'dragon'
+  // exists as a real encounter so far - the rest are reserved checkpoint
+  // slots that fall back to BaseEncounter's silent survive-and-continue
+  // behaviour until their concrete classes exist.
+  encounterCheckpoints: [
+    { score: 2, type: 'dragon' },
+    { score: 50, type: 'storm' },
+    { score: 80, type: 'dragon' },
+    { score: 120, type: 'ufo' },
+    { score: 170, type: 'volcano' },
+    { score: 250, type: 'dragon' },
+  ],
+  encounterWarningDuration: 1.6, // seconds the WARNING flash shows before the encounter actually starts
+  encounterPipeClearDuration: 0.8, // seconds given for on-screen pipes/coins to clear out during the warning
+  encounterMusicCrossfade: 1.2, // seconds to crossfade from retro loop to boss theme (and back)
+  cameraShakeTraumaOnEncounterWarning: 0.4, // 0-1, punchier than a normal death shake so the WARNING reads as a big deal
+  encounterFogDarkenFactor: 1.8, // multiplies fog density during an encounter, restored on encounterEnd
+
+  // --- Dragon encounter (Phase 5.2) ---
+  // Entity/animation + intro-outro tuning only - attack patterns
+  // (fireball, fire breath, dive, tail swipe) land in Phase 5.3/5.4.
+  dragonSurviveDuration: 15, // seconds - the ACTIVE-phase survival window (BaseEncounter's `duration`)
+  dragonIntroDuration: 1.2, // seconds for the fly-in tween, played as BaseEncounter's INTRO phase
+  dragonOutroDuration: 1.1, // seconds for the fly-away tween, played as BaseEncounter's OUTRO phase
+  dragonOnScreenX: 5.5, // resting x once flown in - dragon "remains on the right side of the screen"
+  dragonOffScreenX: 9.5, // starting/ending x for the fly-in/fly-away tween, outside the camera frustum
+  dragonBaseY: 1.7, // y used while off-screen, before it has any bird position to follow
+  dragonFollowLerp: 0.06, // per-frame lerp factor easing dragon.y toward the bird's height
+  dragonMinY: -0.4, // clamps how low the dragon will dip to follow the bird (stays above the ground)
+  dragonMaxY: 4.2, // clamps how high the dragon will climb to follow the bird (stays under the ceiling)
+
+  // --- Dragon attacks (Phase 5.3) ---
+  // Fireball only for now - Fire Breath / Dive / Tail Swipe land in
+  // Phase 5.4. Per-encounter difficulty scaling (faster rate/speed)
+  // is Phase 5.6; these are the baseline Dragon I numbers.
+  fireballInterval: 0, // seconds between shots
+  fireballSpeed: 5, // world units/sec, aimed at the bird's position at fire time
+  projectileDespawnPadding: 2, // world units beyond the play area's x/y bounds before a stray projectile is recycled
 };
 
 export const INPUT_KEYS = Object.freeze({
