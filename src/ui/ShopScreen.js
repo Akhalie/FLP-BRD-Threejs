@@ -1,3 +1,5 @@
+import { showScreen, hideScreen } from './panelTransition.js';
+
 export class ShopScreen {
   constructor(game) {
     this.game = game;
@@ -40,11 +42,11 @@ export class ShopScreen {
 
   show() {
     this.refresh();
-    this.root.classList.add('visible');
+    showScreen(this.root);
   }
 
   hide() {
-    this.root.classList.remove('visible');
+    hideScreen(this.root);
   }
 
   refresh() {

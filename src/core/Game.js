@@ -8,6 +8,7 @@ import { GameState, CONFIG } from '../utils/Constants.js';
 import { Bird } from '../entities/Bird.js';
 import { Ground } from '../entities/Ground.js';
 import { PipeSpawner } from '../systems/PipeSpawner.js';
+import { ParallaxBackgroundSystem } from '../systems/ParallaxBackgroundSystem.js';
 import { CollisionSystem } from '../systems/CollisionSystem.js';
 import { ScoreSystem } from '../systems/ScoreSystem.js';
 import { CoinSystem } from '../systems/CoinSystem.js';
@@ -55,6 +56,7 @@ export class Game {
     this.sceneManager.scene.add(this.bird.group);
 
     this.ground = new Ground(this.sceneManager.scene);
+    this.parallaxBackgroundSystem = new ParallaxBackgroundSystem(this.sceneManager.scene);
     this.pipeSpawner = new PipeSpawner(this.sceneManager.scene);
     this.collisionSystem = new CollisionSystem();
     this.scoreSystem = new ScoreSystem(this.emitter);
@@ -260,7 +262,7 @@ export class Game {
     this._rafId = requestAnimationFrame(this._boundLoop);
     const delta = Math.min(this.clock.getDelta(), 0.1); // clamp to avoid huge jumps on tab-switch
     this._update(delta);
-    this._render();
+    this._render(delta);
   }
 
   _update(delta) {
@@ -273,10 +275,12 @@ export class Game {
       case GameState.MENU:
         this.bird.hover(delta);
         this.ground.update(delta, CONFIG.menuGroundSpeed);
+        this.parallaxBackgroundSystem.update(delta, CONFIG.menuGroundSpeed);
         break;
       case GameState.READY:
         this.bird.hover(delta);
         this.ground.update(delta, CONFIG.pipeSpeed);
+        this.parallaxBackgroundSystem.update(delta, CONFIG.pipeSpeed);
         break;
       case GameState.PLAYING:
         this._updatePlaying(delta);
@@ -296,6 +300,7 @@ export class Game {
   _updatePlaying(delta) {
     this.bird.update(delta);
     this.ground.update(delta, this.pipeSpawner.speed);
+    this.parallaxBackgroundSystem.update(delta, this.pipeSpawner.speed);
     this.pipeSpawner.update(delta);
     this.scoreSystem.checkPipePassed(this.bird, this.pipeSpawner.active);
     this._collectCoins();
@@ -349,6 +354,7 @@ export class Game {
   _updateEncounter(delta) {
     this.bird.update(delta);
     this.ground.update(delta, this.pipeSpawner.speed);
+    this.parallaxBackgroundSystem.update(delta, this.pipeSpawner.speed);
     this.pipeSpawner.update(delta);
     this._collectCoins();
 
@@ -397,8 +403,8 @@ export class Game {
     }
   }
 
-  _render() {
-    this.rendererManager.render(this.sceneManager.scene, this.cameraManager.camera);
+  _render(delta) {
+    this.rendererManager.render(this.sceneManager.scene, this.cameraManager.camera, delta);
   }
 
   _onResize() {

@@ -119,6 +119,50 @@ export const CONFIG = {
   musicVolume: 0.18,
   sfxVolume: 0.35,
 
+  // --- Post-processing (Phase 3) - see STYLE_PHASE_3_LIGHTING_POSTFX.md ---
+  // RendererManager builds an EffectComposer (bloom -> grade pass ->
+  // output) gated by this flag. Read live each render() call, so
+  // flipping it at runtime (devtools, or PerformanceMonitor) takes
+  // effect on the very next frame with no rebuild needed.
+  postProcessingEnabled: true,
+  bloomStrength: 0.55,
+  bloomRadius: 0.45,
+  // High enough that ordinary lit surfaces don't wash out - tuned so
+  // only neon rim-light edges (CelMaterial's fresnel term) and the
+  // coin's emissive accent cross the threshold and actually bloom.
+  bloomThreshold: 0.8,
+
+  // GradePass (src/materials/GradePass.js) tuning - color grade,
+  // vignette, grain, and screen-edge chromatic aberration folded into
+  // one shader pass. Every value below can be dialed to 0 without
+  // removing the pass.
+  gradeTintColor: PALETTE.background.horizon, // same purple already used for scene fog/background, not a new hue
+  gradeTintAmount: 0.16, // 0-1, how strongly the grade pass pushes toward gradeTintColor
+  gradeSaturation: 1.18, // >1 boosts saturation - the "neon" push from the Style Guide
+  gradeVignette: 0.35, // 0-1, corner-darkening strength
+  gradeGrain: 0.035, // 0-1, per-pixel noise amount
+  gradeAberration: 0.0015, // uv-space offset at the screen edge; 0 disables it entirely - kept "very subtle" per the Style Guide
+
+  // --- Parallax background (Phase 4) - see STYLE_PHASE_4_BACKGROUNDS.md ---
+  // ParallaxBackgroundSystem's 3 depth layers, each scrolling at a
+  // ratio of whatever speed Game.js is already handing Ground.update()
+  // that frame (CONFIG.menuGroundSpeed / CONFIG.pipeSpeed /
+  // pipeSpawner.speed) - so parallax always tracks gameplay speed,
+  // difficulty speedups included, without its own separate tuning per state.
+  bgFarScrollRatio: 0.12, // far skyline - barely moves, reads as distant
+  bgMidScrollRatio: 0.35, // mid city blocks
+  bgNearScrollRatio: 0.7, // near billboards - closest to gameplay speed, but still behind it so the layers stay legibly separated
+
+  // Near-layer billboards - animated neon signs, each paired with a
+  // short-range THREE.PointLight so nearby entities (mostly the Bird)
+  // pick up colored rim light as they pass - the payoff for Phase 2's
+  // fresnel rim-light shader hook.
+  bgBillboardEmissiveIntensity: 0.9, // brightest emissive of any background layer - it's the closest/highest-detail one
+  bgBillboardLightIntensity: 0.8,
+  bgBillboardLightRange: 6, // world units - short on purpose, only tints things actually passing close by
+  bgBillboardScrollSpeed: 0.15, // texture.offset.y units/sec - the scrolling-scanline animation
+  bgBillboardFlickerInterval: 1.4, // average seconds between flicker checks (randomized +/- per-billboard so they don't flicker in lockstep)
+
   // --- Performance / adaptive quality (Phase 4) ---
   // RendererManager starts at renderResolutionScale, but PerformanceMonitor
   // will nudge it between these bounds at runtime based on measured FPS -

@@ -1,5 +1,15 @@
 import * as THREE from 'three';
-import { CONFIG } from '../utils/Constants.js';
+import { CONFIG, PALETTE } from '../utils/Constants.js';
+
+// Stylization Phase 4 (see STYLE_PHASE_4_BACKGROUNDS.md): a pale tint
+// toward the palette's purple horizon tone rather than stark white, so
+// clouds read as one of the game's atmospheric layers instead of a
+// leftover default-material color. Computed once at module load - it's
+// a fixed blend, not something that needs to change per-cloud.
+const CLOUD_COLOR = new THREE.Color(0xffffff).lerp(
+  new THREE.Color(PALETTE.background.horizon),
+  0.4
+);
 
 /**
  * Decorative rolling cloud layer for the Storm encounter (docs/storm.md's
@@ -19,7 +29,7 @@ export class CloudSystem {
       const scale = CONFIG.stormCloudMinScale + Math.random() * (CONFIG.stormCloudMaxScale - CONFIG.stormCloudMinScale);
 
       const material = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
+        color: CLOUD_COLOR,
         transparent: true,
         opacity: CONFIG.stormCloudOpacity,
         depthWrite: false,

@@ -1,3 +1,5 @@
+import { showScreen, hideScreen } from './panelTransition.js';
+
 /**
  * Pause overlay (GameState.PAUSED). Resume re-emits 'pause' through
  * the same emitter InputManager uses, so it goes through the exact
@@ -31,10 +33,10 @@ export class PauseOverlay {
   }
 
   show() {
-    this.root.classList.add('visible');
+    showScreen(this.root);
   }
 
   hide() {
-    this.root.classList.remove('visible');
+    hideScreen(this.root);
   }
 }

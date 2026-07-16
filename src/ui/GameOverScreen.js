@@ -1,3 +1,5 @@
+import { showScreen, hideScreen } from './panelTransition.js';
+
 /**
  * Game Over screen (GameState.GAME_OVER). Play Again calls the public
  * game.requestRestart() (-> READY, same as flapping to retry) and Main
@@ -44,10 +46,10 @@ export class GameOverScreen {
     this.bestLabel.textContent = String(this.game.scoreSystem.best);
     this.coinsRunLabel.textContent = String(this.game.coinSystem.run);
     this.coinsTotalLabel.textContent = String(this.game.coinSystem.total);
-    this.root.classList.add('visible');
+    showScreen(this.root);
   }
 
   hide() {
-    this.root.classList.remove('visible');
+    hideScreen(this.root);
   }
 }

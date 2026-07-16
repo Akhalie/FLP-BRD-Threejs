@@ -30,6 +30,7 @@
 
   --ease-tap: 0.08s ease;
   --ease-hover: 0.15s ease;
+  --panel-exit-ms: 150ms;
 }
 
 * {
@@ -113,8 +114,16 @@ html, body {
   inset: 0;
 }
 
-.screen:not(.visible) {
+/* Stays laid out (but non-interactive) for --panel-exit-ms while
+   .closing plays the exit animation below, so hiding a screen isn't an
+   instant cut - only after that does it fully unmount. See
+   showScreen()/hideScreen() in src/ui/panelTransition.js. */
+.screen:not(.visible):not(.closing) {
   display: none;
+}
+
+.screen.closing {
+  pointer-events: none;
 }
 
 /* Menu / Pause / Game Over / Shop all share the centered-panel-over-dim-backdrop look. */
@@ -131,12 +140,6 @@ html, body {
   padding: 16px;
 }
 
-.main-menu:not(.visible),
-.pause-overlay:not(.visible),
-.game-over:not(.visible) {
-  display: none;
-}
-
 .panel {
   display: flex;
   flex-direction: column;
@@ -151,6 +154,10 @@ html, body {
   animation: panel-in 0.16s ease-out;
 }
 
+.screen.closing .panel {
+  animation: panel-out var(--panel-exit-ms) ease-in forwards;
+}
+
 @keyframes panel-in {
   from {
     opacity: 0;
@@ -159,6 +166,17 @@ html, body {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@keyframes panel-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
   }
 }
 

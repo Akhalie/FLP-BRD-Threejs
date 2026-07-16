@@ -43,6 +43,18 @@ export class PerformanceMonitor {
     } else if (this._avgFps >= CONFIG.perfGoodFps && currentScale < CONFIG.maxResolutionScale) {
       this.rendererManager.setResolutionScale(currentScale + CONFIG.perfScaleStep);
       this._cooldown = CONFIG.perfAdjustCooldown;
+    } else if (this._avgFps < CONFIG.perfMinFps && this.rendererManager.isPostProcessingEnabled()) {
+      // Resolution is already at its floor (the branch above didn't
+      // fire) and frames are still too slow - post-processing (bloom's
+      // extra render targets especially) is the next thing to give,
+      // per the Style Guide's note on toggling it for low-end devices.
+      this.rendererManager.setPostProcessingEnabled(false);
+      this._cooldown = CONFIG.perfAdjustCooldown;
+    } else if (this._avgFps >= CONFIG.perfGoodFps && !this.rendererManager.isPostProcessingEnabled()) {
+      // Mirror image: resolution's back at its ceiling and fps is
+      // comfortably good, so give post-processing another try.
+      this.rendererManager.setPostProcessingEnabled(true);
+      this._cooldown = CONFIG.perfAdjustCooldown;
     }
   }
 

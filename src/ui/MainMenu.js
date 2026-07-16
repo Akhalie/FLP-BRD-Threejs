@@ -1,3 +1,5 @@
+import { showScreen, hideScreen } from './panelTransition.js';
+
 /**
  * The main menu screen (GameState.MENU). Purely presentational - it
  * owns its DOM and visibility, but all it does on Play is call the
@@ -58,10 +60,10 @@ export class MainMenu {
   show() {
     this.bestLabel.textContent = String(this.game.scoreSystem.best);
     this.coinsTotalLabel.textContent = String(this.game.coinSystem.total);
-    this.root.classList.add('visible');
+    showScreen(this.root);
   }
 
   hide() {
-    this.root.classList.remove('visible');
+    hideScreen(this.root);
   }
 }
