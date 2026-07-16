@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { CONFIG } from '../utils/Constants.js';
+import { CONFIG, PALETTE } from '../utils/Constants.js';
+import { createCelMaterial } from '../materials/CelMaterial.js';
+import { addOutline } from '../materials/OutlinePass.js';
 
 const PIPE_RADIUS = 0.5;
 const CAP_RADIUS = PIPE_RADIUS * 1.15;
@@ -55,13 +57,13 @@ function buildAssemblyGeometry(direction) {
 
 const TOP_ASSEMBLY_GEOMETRY = buildAssemblyGeometry(1);
 const BOTTOM_ASSEMBLY_GEOMETRY = buildAssemblyGeometry(-1);
-const BODY_MATERIAL = new THREE.MeshLambertMaterial({ map: BODY_TEXTURE });
-const CAP_MATERIAL = new THREE.MeshLambertMaterial({ map: CAP_TEXTURE });
+// Stylization Phase 2: cel-shaded instead of MeshLambertMaterial, same
+// tiled textures as before (createCelMaterial's `map` option). A
+// gentle magenta rim keeps pipes readable as "background hazard"
+// without competing with the Bird's cyan rim.
+const BODY_MATERIAL = createCelMaterial({ map: BODY_TEXTURE, rimColor: PALETTE.neon.magenta, rimIntensity: 0.35 });
+const CAP_MATERIAL = createCelMaterial({ map: CAP_TEXTURE, rimColor: PALETTE.neon.magenta, rimIntensity: 0.35 });
 const ASSEMBLY_MATERIALS = [BODY_MATERIAL, CAP_MATERIAL];
-const OUTLINE_MATERIAL = new THREE.MeshBasicMaterial({
-  color: 0x000000,
-  side: THREE.BackSide,
-});
 
 /**
  * A single pipe pair (top + bottom assembly), designed to be pooled
@@ -87,24 +89,12 @@ export class Pipe {
       ASSEMBLY_MATERIALS
     );
 
-    // Outline meshes
-    this.topOutline = new THREE.Mesh(
-      TOP_ASSEMBLY_GEOMETRY,
-      OUTLINE_MATERIAL
-    );
-
-    this.bottomOutline = new THREE.Mesh(
-      BOTTOM_ASSEMBLY_GEOMETRY,
-      OUTLINE_MATERIAL
-    );
-
-    this.topOutline.scale.setScalar(1.06);
-    this.bottomOutline.scale.setScalar(1.06);
-
-    // Parent outlines to the real pipes so they automatically
-    // move/rotate with them.
-    this.topAssembly.add(this.topOutline);
-    this.bottomAssembly.add(this.bottomOutline);
+    // Outline meshes (Stylization Phase 2: now built through the
+    // shared addOutline() helper - see src/materials/OutlinePass.js -
+    // instead of hand-rolled here. Same technique, same visual result,
+    // just no longer duplicated per entity file.)
+    this.topOutline = addOutline(this.topAssembly, { color: PALETTE.neutral.charcoal, scale: 1.06 });
+    this.bottomOutline = addOutline(this.bottomAssembly, { color: PALETTE.neutral.charcoal, scale: 1.06 });
 
     this.group.add(this.topAssembly);
     this.group.add(this.bottomAssembly);
@@ -119,8 +109,6 @@ export class Pipe {
 
     this.active = false;
     this.passed = false;
-    this.topOutline.position.set(0, 0, 0);
-    this.bottomOutline.position.set(0, 0, 0);
   }
 
   spawn(x) {

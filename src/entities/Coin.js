@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { CONFIG } from '../utils/Constants.js';
+import { CONFIG, PALETTE } from '../utils/Constants.js';
+import { createCelMaterial } from '../materials/CelMaterial.js';
+import { addOutline } from '../materials/OutlinePass.js';
 
 const COIN_RADIUS = 0.28;
 const COIN_THICKNESS = 0.08;
@@ -8,7 +10,16 @@ const COIN_COLOR = 0xffd54f;
 // Shared by every Coin instance (same optimization as Pipe's shared
 // geometry/material) - coins never differ in shape or color, only position.
 const COIN_GEOMETRY = new THREE.CylinderGeometry(COIN_RADIUS, COIN_RADIUS, COIN_THICKNESS, 14);
-const COIN_MATERIAL = new THREE.MeshLambertMaterial({ color: COIN_COLOR });
+// Coins get a touch of emissive + a lime rim so they read as the
+// "neon pickup" against the cyan/orange cast elsewhere - collectibles
+// should stand out as their own accent color (STYLE_GUIDE.md's
+// "Emissive maps: for neon panels and accessories").
+const COIN_MATERIAL = createCelMaterial({
+  color: COIN_COLOR,
+  emissive: COIN_COLOR,
+  emissiveIntensity: 0.25,
+  rimColor: PALETTE.neon.lime,
+});
 
 /**
  * A single collectible coin, one spawned in the middle of every pipe
@@ -28,6 +39,7 @@ export class Coin {
     // Cylinder's flat caps face up/down by default; rotate so the flat
     // faces point at the camera instead, reading as a coin, not a wheel.
     this.mesh.rotation.x = Math.PI / 2;
+    addOutline(this.mesh, { color: PALETTE.neutral.charcoal, scale: 1.18 });
 
     this.box = new THREE.Box3();
     this.active = false;

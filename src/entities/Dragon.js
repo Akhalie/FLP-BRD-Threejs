@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { CONFIG } from '../utils/Constants.js';
+import { CONFIG, PALETTE } from '../utils/Constants.js';
+import { createCelMaterial } from '../materials/CelMaterial.js';
+import { addOutline } from '../materials/OutlinePass.js';
 
 const BODY_COLOR = 0x7a2048; // deep crimson-purple, reads as "boss" against the green pipes
 const BELLY_COLOR = 0xd98c46;
@@ -29,13 +31,18 @@ export class Dragon {
 
     const bodyGeometry = new THREE.SphereGeometry(0.55, 8, 6);
     bodyGeometry.scale(1.35, 0.85, 0.85);
-    const bodyMaterial = new THREE.MeshLambertMaterial({ color: BODY_COLOR });
+    const bodyMaterial = createCelMaterial({ color: BODY_COLOR, rimColor: PALETTE.neon.magenta, rimIntensity: 0.6 });
     this.body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     this.group.add(this.body);
+    // Outline on the main body only - same "primary silhouette gets
+    // the outline" call as Bird.js, since a per-part outline on every
+    // horn/wing/tail segment would just read as noise on a boss this
+    // detailed.
+    addOutline(this.body, { color: PALETTE.neutral.charcoal, scale: 1.1 });
 
     const bellyGeometry = new THREE.SphereGeometry(0.32, 8, 6);
     bellyGeometry.scale(1.3, 0.7, 0.8);
-    const bellyMaterial = new THREE.MeshLambertMaterial({ color: BELLY_COLOR });
+    const bellyMaterial = createCelMaterial({ color: BELLY_COLOR, rimColor: PALETTE.neon.orange, rimIntensity: 0.4 });
     this.belly = new THREE.Mesh(bellyGeometry, bellyMaterial);
     this.belly.position.set(0, -0.28, 0);
     this.group.add(this.belly);
@@ -47,19 +54,19 @@ export class Dragon {
     this.group.add(this.head);
 
     const skullGeometry = new THREE.BoxGeometry(0.45, 0.4, 0.42);
-    const skullMaterial = new THREE.MeshLambertMaterial({ color: BODY_COLOR });
+    const skullMaterial = createCelMaterial({ color: BODY_COLOR, rimColor: PALETTE.neon.magenta, rimIntensity: 0.6 });
     const skull = new THREE.Mesh(skullGeometry, skullMaterial);
     this.head.add(skull);
 
     const snoutGeometry = new THREE.ConeGeometry(0.16, 0.5, 4);
-    const snoutMaterial = new THREE.MeshLambertMaterial({ color: BODY_COLOR });
+    const snoutMaterial = createCelMaterial({ color: BODY_COLOR, rimColor: PALETTE.neon.magenta, rimIntensity: 0.6 });
     const snout = new THREE.Mesh(snoutGeometry, snoutMaterial);
     snout.rotation.z = Math.PI / 2;
     snout.position.set(-0.42, -0.03, 0);
     this.head.add(snout);
 
     const hornGeometry = new THREE.ConeGeometry(0.07, 0.32, 4);
-    const hornMaterial = new THREE.MeshLambertMaterial({ color: HORN_COLOR });
+    const hornMaterial = createCelMaterial({ color: HORN_COLOR, rimColor: PALETTE.neon.cyan, rimIntensity: 0.3 });
     this.leftHorn = new THREE.Mesh(hornGeometry, hornMaterial);
     this.leftHorn.position.set(0.05, 0.28, 0.12);
     this.leftHorn.rotation.z = -0.35;
@@ -80,7 +87,7 @@ export class Dragon {
     // naturally instead of rotating around the wing's own center.
     const wingGeometry = new THREE.BoxGeometry(0.75, 0.06, 0.45);
     wingGeometry.translate(0, 0, 0.22); // pushes the pivot to the root edge of the wing
-    const wingMaterial = new THREE.MeshLambertMaterial({ color: WING_COLOR });
+    const wingMaterial = createCelMaterial({ color: WING_COLOR, rimColor: PALETTE.neon.cyan, rimIntensity: 0.7 });
 
     this.leftWingPivot = new THREE.Group();
     this.leftWingPivot.position.set(0.05, 0.25, 0.28);
@@ -101,7 +108,7 @@ export class Dragon {
     this.tail.position.set(0.55, -0.05, 0);
     this.group.add(this.tail);
 
-    const tailMaterial = new THREE.MeshLambertMaterial({ color: BODY_COLOR });
+    const tailMaterial = createCelMaterial({ color: BODY_COLOR, rimColor: PALETTE.neon.magenta, rimIntensity: 0.5 });
     const segmentCount = 3;
     for (let i = 0; i < segmentCount; i++) {
       const t = i / (segmentCount - 1);
@@ -170,6 +177,12 @@ export class Dragon {
   /** Disposes every geometry/material this instance created. Dragon is spawned/despawned per fight, unlike the persistent Bird, so this matters. */
   dispose() {
     this.group.traverse((child) => {
+      // Outline meshes share their geometry with their parent mesh and
+      // their material across every entity using that outline color
+      // (see OutlinePass.js) - neither is owned by this Dragon
+      // instance, so disposing them here would break outlines on
+      // every other still-alive entity (Bird, Pipe, Coin).
+      if (child.isOutlineMesh) return;
       if (child.geometry) child.geometry.dispose();
       if (child.material) child.material.dispose();
     });

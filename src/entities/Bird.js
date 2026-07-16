@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { CONFIG } from '../utils/Constants.js';
+import { CONFIG, PALETTE } from '../utils/Constants.js';
+import { createCelMaterial } from '../materials/CelMaterial.js';
+import { addOutline } from '../materials/OutlinePass.js';
 
 const START_POSITION = new THREE.Vector3(-1.5, 1, 0);
 const BODY_COLOR = 0xf4d35e;
@@ -19,19 +21,23 @@ export class Bird {
     this.group = new THREE.Group();
 
     const bodyGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-    const bodyMaterial = new THREE.MeshLambertMaterial({ color: BODY_COLOR });
+    const bodyMaterial = createCelMaterial({ color: BODY_COLOR, rimColor: PALETTE.neon.cyan });
     this.body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     this.group.add(this.body);
+    // Outline on the body only - it's the bird's primary silhouette;
+    // beak/wings are small enough that a per-part outline would just
+    // read as visual noise (see STYLE_PHASE_2's acceptance criteria).
+    addOutline(this.body, { color: PALETTE.neutral.charcoal, scale: 1.15 });
 
     const beakGeometry = new THREE.ConeGeometry(0.12, 0.3, 4);
-    const beakMaterial = new THREE.MeshLambertMaterial({ color: BEAK_COLOR });
+    const beakMaterial = createCelMaterial({ color: BEAK_COLOR, rimColor: PALETTE.neon.orange });
     this.beak = new THREE.Mesh(beakGeometry, beakMaterial);
     this.beak.rotation.z = -Math.PI / 2;
     this.beak.position.set(0.35, 0.05, 0);
     this.group.add(this.beak);
 
     const wingGeometry = new THREE.BoxGeometry(0.3, 0.12, 0.35);
-    const wingMaterial = new THREE.MeshLambertMaterial({ color: WING_COLOR });
+    const wingMaterial = createCelMaterial({ color: WING_COLOR, rimColor: PALETTE.neon.cyan });
     this.leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
     this.leftWing.position.set(-0.05, 0, 0.3);
     this.rightWing = new THREE.Mesh(wingGeometry, wingMaterial);

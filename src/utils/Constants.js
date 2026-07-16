@@ -9,6 +9,28 @@ export const GameState = Object.freeze({
   GAME_OVER: 'GAME_OVER',
 });
 
+// Stylization Phase 1 (see STYLE_GUIDE.md / STYLE_PHASE_1_PALETTE.md) -
+// the single source of truth for the JSR / Bomb Rush Cyberpunk color
+// system. Every later stylization phase (shaders, backgrounds, UI)
+// should pull colors from here rather than inventing new hex literals.
+export const PALETTE = Object.freeze({
+  neon: Object.freeze({
+    magenta: 0xff2ec4,
+    cyan: 0x2ef2ff,
+    lime: 0xb6ff2e,
+    orange: 0xff8a2e,
+  }),
+  background: Object.freeze({
+    deepPurple: 0x1a1030,
+    duskBlue: 0x241a4a,
+    horizon: 0x3a2a63,
+  }),
+  neutral: Object.freeze({
+    charcoal: 0x1c1c22,
+    warmGray: 0x55505c,
+  }),
+});
+
 export const CONFIG = {
   // --- Retro rendering ---
   // We render at a fraction of the real canvas size, then let CSS
@@ -25,8 +47,13 @@ export const CONFIG = {
   cameraLookAt: { x: 2, y: 1, z: 0 },
 
   // --- Scene / fog ---
-  skyColor: 0x9fd1e6,
-  fogColor: 0x9fd1e6,
+  // Stylization Phase 1: sourced from PALETTE.background instead of the
+  // old hardcoded daytime sky-blue hex. skyColor drives both
+  // RendererManager's clear color and SceneManager's scene.background;
+  // fogColor gets the slightly lighter/bluer neighbor tone so the fog
+  // reads as depth rather than a flat matching wall.
+  skyColor: PALETTE.background.deepPurple,
+  fogColor: PALETTE.background.duskBlue,
   fogDensity: 0.035,
 
   // --- Physics (used from Phase 2 onward) ---
