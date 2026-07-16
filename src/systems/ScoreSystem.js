@@ -29,6 +29,25 @@ export class ScoreSystem {
     this.emitter.emit('pointScored', this.score);
   }
 
+  /**
+   * Awards a lump-sum bonus in one shot (e.g. surviving an encounter -
+   * see BaseEncounter's reward payout). Deliberately separate from
+   * addPoint(): calling addPoint() in a loop would fire 'pointScored'
+   * (and Game.js's per-point chime) once per point, which reads as
+   * spam for a double-digit bonus. Emits 'bonusScored' instead, so a
+   * boss win can get its own distinct sound/visual cue.
+   */
+  addBonus(amount) {
+    if (amount <= 0) return;
+    this.score += amount;
+    if (this.score > this.best) {
+      this.best = this.score;
+      this._saveBest(this.best);
+    }
+    this.emitter.emit('score', this.score);
+    this.emitter.emit('bonusScored', amount);
+  }
+
   _loadBest() {
     try {
       return Number(localStorage.getItem(BEST_SCORE_KEY)) || 0;

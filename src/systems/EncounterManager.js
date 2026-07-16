@@ -1,17 +1,19 @@
 import { CONFIG } from '../utils/Constants.js';
 import { BaseEncounter } from '../encounters/BaseEncounter.js';
 import { DragonEncounter } from '../encounters/DragonEncounter.js';
+import { StormEncounter } from '../encounters/StormEncounter.js';
 
 /**
  * Registry of concrete encounter classes by type name (matches the
  * `type` field in CONFIG.encounterCheckpoints). Types without a real
- * entry here (storm, ufo, volcano - reserved for future phases) fall
- * back to BaseEncounter, which just silently survives its duration
- * and hands control back - this keeps every checkpoint playable (and
- * this manager fully testable) even before every encounter exists.
+ * entry here (ufo, volcano - reserved for future phases) fall back to
+ * BaseEncounter, which just silently survives its duration and hands
+ * control back - this keeps every checkpoint playable (and this
+ * manager fully testable) even before every encounter exists.
  */
 const ENCOUNTER_REGISTRY = {
   dragon: DragonEncounter, // Phase 5.2 - entity, idle animation, intro/outro fly-in/out
+  storm: StormEncounter, // Phase 5.6 - no boss entity, weather itself is the encounter (docs/storm.md)
 };
 
 /**

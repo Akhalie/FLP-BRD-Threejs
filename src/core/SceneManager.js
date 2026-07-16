@@ -12,17 +12,23 @@ import { CONFIG } from '../utils/Constants.js';
  */
 export class SceneManager {
   constructor() {
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(CONFIG.skyColor);
-    this.scene.fog = new THREE.FogExp2(CONFIG.fogColor, CONFIG.fogDensity);
-    this._baseFogDensity = CONFIG.fogDensity;
+      this.scene = new THREE.Scene();
+      this.scene.background = new THREE.Color(CONFIG.skyColor);
+      this.scene.fog = new THREE.FogExp2(CONFIG.fogColor, CONFIG.fogDensity);
 
-    this._setupLights();
+      this._baseFogDensity = CONFIG.fogDensity;
+
+      // Lightning flash
+      this._flashStrength = 0;
+      this._flashColor = new THREE.Color(0xeedd99);
+      this._baseBackground = new THREE.Color(CONFIG.skyColor);
+
+      this._setupLights();
   }
 
   /** Thickens fog for an encounter's intro ("Fog darkens" in the WARNING sequence). Idempotent. */
   darkenFog(factor = CONFIG.encounterFogDarkenFactor) {
-    this.scene.fog.density = this._baseFogDensity * factor;
+      this.scene.fog.density = this._baseFogDensity * factor;
   }
 
   /** Restores normal fog density ("Fog clears" in the victory sequence). */
@@ -38,4 +44,31 @@ export class SceneManager {
 
     this.scene.add(ambient, directional);
   }
+
+  flashLightning() {
+
+    this._flashStrength = 1;
+
+}
+
+  update(delta) {
+
+      this._flashStrength = Math.max(
+          0,
+          this._flashStrength - delta * 12
+      );
+
+      this.scene.background.copy(this._baseBackground);
+
+      if (this._flashStrength > 0) {
+
+          this.scene.background.lerp(
+              this._flashColor,
+              this._flashStrength
+          );
+
+      }
+
+  }
+
 }

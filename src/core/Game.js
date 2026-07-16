@@ -110,6 +110,17 @@ export class Game {
     });
     this.emitter.on('encounterEnd', () => this.sceneManager.restoreFog());
 
+    // Reward payout (Phase 5.5): BaseEncounter._awardRewards() already
+    // fired the particle burst/victory sound (it has those in its own
+    // context) - it emits this event for the score/coin bookkeeping,
+    // since ScoreSystem/CoinSystem live here, not on the encounter.
+    // Flat amounts for now; per-encounter/difficulty-scaled payouts are
+    // a Phase 5.6 concern.
+    this.emitter.on('encounterVictory', () => {
+      this.scoreSystem.addBonus(10);
+      this.coinSystem.addCoin(5);
+    });
+
     // Any raw input also doubles as the user gesture that unlocks audio.
     this.emitter.on('flap', () => this.audioManager.resume());
     this.emitter.on('pause', () => this.audioManager.resume());
@@ -254,6 +265,7 @@ export class Game {
   _update(delta) {
     this.performanceMonitor.update(delta);
     this.cameraManager.update(delta);
+    this.sceneManager.update(delta);
     this.particleSystem.update(delta);
 
     switch (this.state) {

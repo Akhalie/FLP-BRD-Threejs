@@ -91,6 +91,14 @@ export class BaseEncounter {
     this.phase = this.introDuration > 0 ? EncounterPhase.INTRO : EncounterPhase.ACTIVE;
     this._phaseElapsed = 0;
     this._survivedElapsed = 0;
+
+    // Shared "this is a big deal" transition (docs/phase5-encounters.md's
+    // Base Encounter "Music transition" + the Dragon Encounter's Camera
+    // Effects) - every encounter gets the pull-back/tilt and boss-theme
+    // crossfade for free, same reasoning as _awardRewards() below.
+    this.context.cameraManager?.setEncounterMode(true);
+    this.context.audioManager?.crossfadeToBoss();
+
     this._onStart();
     if (this.phase === EncounterPhase.ACTIVE) this._onActiveStart();
   }
@@ -131,6 +139,12 @@ export class BaseEncounter {
   }
 
   cleanup() {
+    // Mirror of start()'s transition-in - always runs (see cleanup()'s own
+    // class-doc note: even on an aborted encounter), so the camera/music
+    // never get stuck in "boss mode" if the bird dies mid-fight.
+    this.context.cameraManager?.setEncounterMode(false);
+    this.context.audioManager?.crossfadeToNormal();
+
     this._onCleanup();
   }
 
@@ -143,9 +157,41 @@ export class BaseEncounter {
   }
 
   _enterOutro() {
-    this._onVictory(); // survival window just ended - this is the win
+    this._onVictory(); // subclass-specific victory cleanup (e.g. DragonEncounter clears in-flight fireballs)
+    this._awardRewards(); // generic payout - see method doc; always runs, independent of the hook above
     this.phase = this.outroDuration > 0 ? EncounterPhase.OUTRO : EncounterPhase.DONE;
     this._phaseElapsed = 0;
+  }
+
+  /**
+   * Generic reward payout for surviving *any* encounter
+   * (docs/phase5-encounters.md's "Rewards" section: bonus score, coins,
+   * a particle burst, a screen flash, and a victory sound).
+   *
+   * Deliberately not a `_on*` hook a subclass could forget to call -
+   * every encounter gets this for free just by surviving, so it's
+   * wired directly into _enterOutro() instead.
+   *
+   * The actual score/coin bookkeeping happens in Game.js (it owns
+   * ScoreSystem/CoinSystem, not this class) - this only emits
+   * 'encounterVictory' for Game.js and the HUD to react to, plus the
+   * parts that *are* already in `context`: the particle burst and the
+   * victory sound.
+   */
+  _awardRewards() {
+    const { particleSystem, audioManager, bird, emitter } = this.context;
+
+    const burstPos = bird ? bird.getPosition() : null;
+    if (burstPos && particleSystem) {
+      // Reuses the coin-sparkle effect, doubled up, so a boss win reads
+      // as a bigger version of a familiar pickup rather than a brand
+      // new effect players have to learn.
+      particleSystem.burstCoinSparkle(burstPos);
+      particleSystem.burstCoinSparkle(burstPos);
+    }
+
+    if (audioManager) audioManager.playVictory();
+    if (emitter) emitter.emit('encounterVictory', { type: this.type });
   }
 
   _enterDone() {

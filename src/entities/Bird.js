@@ -45,6 +45,7 @@ export class Bird {
     this._wingTimer = 0;
     this._flapPulse = 0; // decays after each jump; drives a quick wing-down snap
     this._squash = 0; // 0-1, decays after each jump; drives the body squash-stretch
+    this.externalGravity = 0;
 
     this.reset();
   }
@@ -58,7 +59,9 @@ export class Bird {
     this._flapPulse = 0;
     this._squash = 0;
     this.body.scale.set(1, 1, 1);
+    this.externalGravity = 0;
     this._updateBox();
+    
   }
 
   jump() {
@@ -82,7 +85,11 @@ export class Bird {
 
   /** Full physics tick. Gravity always applies - even a dead bird keeps falling to the ground. */
   update(delta) {
-    this.velocity += CONFIG.gravity * delta;
+    this.velocity +=
+    (
+        CONFIG.gravity +
+        this.externalGravity
+    ) * delta;
     this.velocity = Math.max(this.velocity, CONFIG.maxFallSpeed);
     this.group.position.y += this.velocity * delta;
 

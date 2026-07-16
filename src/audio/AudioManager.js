@@ -12,6 +12,13 @@ import { CONFIG } from '../utils/Constants.js';
  * 'flap'/'pause' input events).
  */
 export class AudioManager {
+  // G4 B4 D5 B4 - simple, cheerful loop for normal gameplay.
+  static NORMAL_PATTERN = [392, 494, 587, 494];
+  static NORMAL_STEP_SECONDS = 0.28;
+  // G3 A#3 A3 C4 - lower and a touch faster: ominous instead of cheerful, and more urgent.
+  static BOSS_PATTERN = [196, 233, 220, 261];
+  static BOSS_STEP_SECONDS = 0.22;
+
   constructor() {
     this.ctx = null;
     this.master = null;
@@ -19,6 +26,9 @@ export class AudioManager {
     this.sfxGain = null;
     this._musicTimer = null;
     this._musicStep = 0;
+    this._musicPattern = AudioManager.NORMAL_PATTERN;
+    this._musicStepSeconds = AudioManager.NORMAL_STEP_SECONDS;
+    this._crossfadeTimer = null;
     this.muted = false;
   }
 
@@ -180,6 +190,28 @@ export class AudioManager {
     osc.stop(t + 0.08);
   }
 
+  /** Rising four-note fanfare played once when an encounter (boss fight) is survived - bigger and slower than playPoint()/playCoin() so a win reads as a bigger deal. */
+  playVictory() {
+    this._ensureContext();
+    const t = this.ctx.currentTime;
+    [523, 659, 784, 1046].forEach((freq, i) => {
+      const start = t + i * 0.09;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, start);
+
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.8, start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.3);
+
+      osc.connect(gain).connect(this.sfxGain);
+      osc.start(start);
+      osc.stop(start + 0.32);
+    });
+  }
+
   // --- Background music -------------------------------------------------
 
   /** Starts a tiny looping arpeggio. Idempotent - calling twice doesn't stack loops. */
@@ -187,10 +219,46 @@ export class AudioManager {
     this._ensureContext();
     if (this._musicTimer !== null) return;
 
-    const pattern = [392, 494, 587, 494]; // G4 B4 D5 B4 - simple, cheerful loop
-    const stepSeconds = 0.28;
+    this._musicPattern = AudioManager.NORMAL_PATTERN;
+    this._musicStepSeconds = AudioManager.NORMAL_STEP_SECONDS;
+    this._startMusicLoop();
+  }
 
+  stopMusic() {
+    clearTimeout(this._crossfadeTimer);
+    this._crossfadeTimer = null;
+    if (this._musicTimer !== null) {
+      clearInterval(this._musicTimer);
+      this._musicTimer = null;
+    }
+  }
+
+  /**
+   * Swaps the running loop to the lower, more ominous boss pattern
+   * (docs/phase5-encounters.md's "Audio" section: "Transition using
+   * crossfade"). Fades the current loop out, swaps the pattern/tempo,
+   * then fades the new one back in - a true simultaneous crossfade
+   * would need a second oscillator chain running in parallel, which is
+   * overkill for a two-note-chord chiptune loop like this one.
+   *
+   * No-op if music isn't currently running (e.g. paused) or the boss
+   * pattern is already playing, so BaseEncounter can call this
+   * unconditionally from every encounter's start() without checking
+   * game state itself.
+   */
+  crossfadeToBoss() {
+    this._crossfadeTo(AudioManager.BOSS_PATTERN, AudioManager.BOSS_STEP_SECONDS);
+  }
+
+  /** Mirror of crossfadeToBoss() - eases back to the normal loop. Called from every encounter's cleanup(). */
+  crossfadeToNormal() {
+    this._crossfadeTo(AudioManager.NORMAL_PATTERN, AudioManager.NORMAL_STEP_SECONDS);
+  }
+
+  _startMusicLoop() {
     const playStep = () => {
+      const pattern = this._musicPattern;
+      const stepSeconds = this._musicStepSeconds;
       const freq = pattern[this._musicStep % pattern.length];
       this._musicStep += 1;
 
@@ -211,14 +279,32 @@ export class AudioManager {
     };
 
     playStep();
-    this._musicTimer = setInterval(playStep, stepSeconds * 1000);
+    this._musicTimer = setInterval(playStep, this._musicStepSeconds * 1000);
   }
 
-  stopMusic() {
-    if (this._musicTimer !== null) {
+  _crossfadeTo(pattern, stepSeconds) {
+    if (this._musicTimer === null || this._musicPattern === pattern) return;
+    this._ensureContext();
+
+    const half = CONFIG.encounterMusicCrossfade / 2;
+    const now = this.ctx.currentTime;
+    this.musicGain.gain.cancelScheduledValues(now);
+    this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, now);
+    this.musicGain.gain.linearRampToValueAtTime(0.0001, now + half);
+
+    clearTimeout(this._crossfadeTimer);
+    this._crossfadeTimer = setTimeout(() => {
       clearInterval(this._musicTimer);
-      this._musicTimer = null;
-    }
+      this._musicPattern = pattern;
+      this._musicStepSeconds = stepSeconds;
+      this._musicStep = 0;
+      this._startMusicLoop();
+
+      const resumeAt = this.ctx.currentTime;
+      this.musicGain.gain.cancelScheduledValues(resumeAt);
+      this.musicGain.gain.setValueAtTime(0.0001, resumeAt);
+      this.musicGain.gain.linearRampToValueAtTime(CONFIG.musicVolume, resumeAt + half);
+    }, half * 1000);
   }
 
   _createNoiseSource(durationSeconds) {

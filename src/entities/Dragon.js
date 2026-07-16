@@ -133,13 +133,26 @@ export class Dragon {
    * freely tween x during INTRO/OUTRO without fighting this method.
    */
   update(delta, targetY) {
-    this._timer += delta;
+    this._followTarget(targetY);
+    this.tickAnimation(delta);
+  }
 
+  /**
+   * Advances only the idle animation (wings/tail/breathing), without
+   * touching position at all. Used by AttackController while it's
+   * directly driving the dragon's x *and* y (the Dive attack, Phase
+   * 5.4) - calling the full update() there would fight the follow-lerp
+   * against whatever position the dive charge just set.
+   */
+  tickAnimation(delta) {
+    this._timer += delta;
+    this._animate();
+  }
+
+  _followTarget(targetY) {
     const clampedTarget = THREE.MathUtils.clamp(targetY, CONFIG.dragonMinY, CONFIG.dragonMaxY);
     this._displayY = THREE.MathUtils.lerp(this._displayY, clampedTarget, CONFIG.dragonFollowLerp);
     this.group.position.y = this._displayY;
-
-    this._animate();
   }
 
   show() {

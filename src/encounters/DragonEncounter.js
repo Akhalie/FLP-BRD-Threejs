@@ -11,11 +11,13 @@ import { AttackController } from '../systems/AttackController.js';
  *
  * Phase 5.2 covered the entity itself, its idle animation, and the
  * intro (fly onto screen) / outro (fly away) sequences. Phase 5.3
- * adds its first real hazard - the Fireball attack, via
+ * added its first real hazard - the Fireball attack, via
  * ProjectileSystem + AttackController - which only runs during the
  * ACTIVE phase, so it never interferes with the INTRO/OUTRO tweens
- * below. Fire Breath / Dive / Tail Swipe land in Phase 5.4 the same
- * way: AttackController gets more patterns, this file doesn't change.
+ * below. Phase 5.4 adds Fire Breath, Dive, and Tail Swipe: the first
+ * two are more AttackController patterns and needed no changes here;
+ * Dive needed one small addition - see `_onUpdateActive`'s
+ * `isControllingDragon` check.
  *
  * Survival, not damage, is the win condition: BaseEncounter already
  * treats "the survival timer ran out" as victory (see its
@@ -71,16 +73,34 @@ export class DragonEncounter extends BaseEncounter {
     this.dragon.group.position.x = CONFIG.dragonOnScreenX;
   }
 
-  /** ACTIVE: holds position on the right side of the screen, only height follows the bird, while AttackController fires. */
+  /**
+   * ACTIVE: normally holds position on the right side of the screen
+   * with only height following the bird, while AttackController fires.
+   * During a Dive (Phase 5.4), AttackController takes over the
+   * dragon's transform directly - `isControllingDragon` says so - so
+   * this only advances Dragon's idle animation those frames instead of
+   * calling the full update() and fighting over position.
+   */
   _onUpdateActive(delta) {
-    this.dragon.update(delta, this.context.bird.getPosition().y);
+    if (this.attackController.isControllingDragon) {
+      this.dragon.tickAnimation(delta);
+    } else {
+      this.dragon.update(delta, this.context.bird.getPosition().y);
+    }
     this.attackController.update(delta);
     this.projectileSystem.update(delta);
   }
 
-  /** True if a live fireball just overlapped the bird - Game.js treats this exactly like a pipe hit. */
+  /**
+   * True if a live hazard just hit the bird - Game.js treats this
+   * exactly like a pipe hit. Covers every pooled projectile
+   * (fireball/fire breath/tail swipe) via ProjectileSystem, plus the
+   * Dive attack's own body-to-body check (the charging dragon isn't a
+   * pooled projectile, so ProjectileSystem can't see it).
+   */
   checkHit(bird) {
-    return this.projectileSystem ? this.projectileSystem.checkHit(bird.box) : false;
+    if (!this.projectileSystem) return false;
+    return this.projectileSystem.checkHit(bird.box) || this.attackController.checkDiveHit(bird);
   }
 
   /**

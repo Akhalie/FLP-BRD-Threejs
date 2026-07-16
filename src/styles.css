@@ -404,6 +404,59 @@ html, body {
   transition: width 0.15s linear;
 }
 
+/* --- Encounter victory: screen flash + reward toast (Phase 5.5) ----- */
+/* Hud triggers both together from 'encounterVictory'; see Hud.js. */
+
+.hud-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255, 213, 79, 0.55), rgba(255, 213, 79, 0) 70%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hud-flash.flash-pulse {
+  animation: victory-flash 0.5s ease-out;
+}
+
+@keyframes victory-flash {
+  0% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+
+.hud-victory-toast {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.hud-victory-toast.visible {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.hud-victory-toast-title {
+  font-size: clamp(16px, 5vw, 24px);
+  color: var(--gold);
+  text-shadow: 3px 3px 0 #000;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+
+.hud-victory-toast-sub {
+  font-size: 11px;
+  color: #fff;
+  text-shadow: 2px 2px 0 #000;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
 /* ===========================
    SHOP SCREEN
 =========================== */

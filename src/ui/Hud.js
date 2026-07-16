@@ -23,6 +23,11 @@ export class Hud {
         <div class="hud-survive-label">SURVIVE</div>
         <div class="hud-survive-track"><div class="hud-survive-fill" data-survive-fill></div></div>
       </div>
+      <div class="hud-flash" data-flash></div>
+      <div class="hud-victory-toast" data-victory-toast>
+        <div class="hud-victory-toast-title" data-victory-title>Victory!</div>
+        <div class="hud-victory-toast-sub">Bonus score + 🪙 coins</div>
+      </div>
     `;
 
     this.scoreLabel = this.root.querySelector('[data-score]');
@@ -31,6 +36,10 @@ export class Hud {
     this.warningEl = this.root.querySelector('[data-warning]');
     this.surviveEl = this.root.querySelector('[data-survive]');
     this.surviveFillEl = this.root.querySelector('[data-survive-fill]');
+    this.flashEl = this.root.querySelector('[data-flash]');
+    this.victoryToastEl = this.root.querySelector('[data-victory-toast]');
+    this.victoryTitleEl = this.root.querySelector('[data-victory-title]');
+    this._victoryToastTimer = null;
 
     this.root.querySelector('[data-pause]').addEventListener('click', () => {
       this.game.audioManager.playUiClick();
@@ -56,6 +65,18 @@ export class Hud {
     this.game.emitter.on('encounterEnd', () => { this._encounterPhase = 'IDLE'; });
     this.game.emitter.on('gameOver', () => { this._encounterPhase = 'IDLE'; });
 
+    // Reward payout feedback (Phase 5.5): BaseEncounter._awardRewards()
+    // already handled the particle burst/victory sound - this is the
+    // purely-visual HUD half (screen flash + a short toast naming what
+    // was just beaten). No specific amounts here on purpose: the score/
+    // coin counters above tick up on their own via the 'score'/'coins'
+    // events Game.js's payout triggers, so this doesn't need to know or
+    // duplicate the actual bonus numbers.
+    this.game.emitter.on('encounterVictory', ({ type }) => this._showVictoryToast(type));
+    // Defensive: if the bird somehow dies in the same instant as a win,
+    // don't leave the toast hanging through the game-over screen.
+    this.game.emitter.on('gameOver', () => this._hideVictoryToast());
+
     this._boundTick = this._tick.bind(this);
     requestAnimationFrame(this._boundTick);
   }
@@ -68,9 +89,33 @@ export class Hud {
     this.root.classList.remove('visible');
   }
 
+
   /** Called on every stateChange while the HUD is visible, to toggle the hint. */
   onStateChange(state) {
     this.hintLabel.style.display = state === GameState.READY ? 'block' : 'none';
+  }
+
+  /** Screen flash + a short "<Type> defeated!" toast - fires once per encounterVictory. */
+  _showVictoryToast(type) {
+    this.victoryTitleEl.textContent = type
+      ? `${type.charAt(0).toUpperCase()}${type.slice(1)} defeated!`
+      : 'Victory!';
+
+    // Restart the flash animation even if it's still mid-flash from an
+    // overlapping trigger: remove the class, force a reflow, re-add it -
+    // browsers won't replay a CSS animation from a class that's already applied.
+    this.flashEl.classList.remove('flash-pulse');
+    void this.flashEl.offsetWidth;
+    this.flashEl.classList.add('flash-pulse');
+
+    this.victoryToastEl.classList.add('visible');
+    clearTimeout(this._victoryToastTimer);
+    this._victoryToastTimer = setTimeout(() => this._hideVictoryToast(), 1800);
+  }
+
+  _hideVictoryToast() {
+    clearTimeout(this._victoryToastTimer);
+    this.victoryToastEl.classList.remove('visible');
   }
 
   /** Runs every frame for this Hud instance's lifetime; cheap enough that it isn't worth gating on visibility. */
@@ -87,4 +132,5 @@ export class Hud {
     const fraction = duration > 0 ? manager.timeRemaining / duration : 0;
     this.surviveFillEl.style.width = `${Math.max(0, Math.min(1, fraction)) * 100}%`;
   }
+
 }
