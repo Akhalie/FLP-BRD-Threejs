@@ -185,7 +185,7 @@ export const CONFIG = {
   // slots that fall back to BaseEncounter's silent survive-and-continue
   // behaviour until their concrete classes exist.
   encounterCheckpoints: [
-    { score: 10, type: 'dragon' },
+    { score: 1, type: 'dragon' },
     { score: 25, type: 'storm' },
     { score: 80, type: 'dragon' },
     { score: 120, type: 'ufo' },

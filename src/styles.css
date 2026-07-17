@@ -612,3 +612,50 @@ html, body {
   margin: 20px 0;
   flex-wrap: wrap;
 }
+
+/* ==========================================================================
+   Rotate-device overlay (MobileViewport.js)
+
+   Fallback for when the Fullscreen/Screen-Orientation lock in
+   requestImmersiveMode() is unsupported or denied (notably iPhone
+   Safari, which has neither API) - shown any time a touch device's
+   viewport is in portrait, regardless of whether the lock succeeded.
+   ========================================================================== */
+#rotate-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--ink);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+#rotate-overlay.is-visible {
+  display: flex;
+}
+
+.rotate-overlay-content {
+  color: var(--mist);
+  padding: 24px;
+}
+
+.rotate-overlay-icon {
+  font-size: 48px;
+  color: var(--gold);
+  margin-bottom: 16px;
+  animation: rotate-overlay-spin 1.6s ease-in-out infinite;
+  display: inline-block;
+}
+
+.rotate-overlay-content p {
+  font-size: 12px;
+  line-height: 1.6;
+  letter-spacing: 0.5px;
+}
+
+@keyframes rotate-overlay-spin {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-90deg); }
+}

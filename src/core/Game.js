@@ -18,6 +18,7 @@ import { AudioManager } from '../audio/AudioManager.js';
 import { ParticleSystem } from '../effects/ParticleSystem.js';
 import { PerformanceMonitor } from './PerformanceMonitor.js';
 import { UIManager } from '../ui/UIManager.js';
+import { requestImmersiveMode } from './MobileViewport.js';
 
 const GROUND_REST_Y = CONFIG.groundY + 0.25; // bird's half-height, so it visually sits on the ground
 
@@ -189,6 +190,13 @@ export class Game {
   /** Called by MainMenu's Play button. MENU -> READY (flap then starts the run, same as Phase 2). */
   startGame() {
     if (this.state !== GameState.MENU) return;
+    // Fire-and-forget: this call is on the Play button's click handler,
+    // the one real user gesture both the Fullscreen and Screen
+    // Orientation APIs require - it's a no-op on desktop and
+    // best-effort/gracefully-ignored anywhere it's unsupported (see
+    // MobileViewport.js). Not awaited - the run starts immediately
+    // either way, it shouldn't wait on a permission prompt.
+    requestImmersiveMode();
     this.bird.reset();
     this.state = GameState.READY;
     this.emitter.emit('stateChange', this.state);

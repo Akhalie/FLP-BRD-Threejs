@@ -1,4 +1,7 @@
 import { Game } from './core/Game.js';
+import { initRotateOverlay } from './core/MobileViewport.js';
+
+initRotateOverlay();
 
 const canvas = document.getElementById('game-canvas');
 const uiRoot = document.getElementById('ui-root');
